@@ -1,62 +1,77 @@
 # BrewMatch — AI Coffee Machine Finder
 
-An AI assistant designed to help users compare coffee machines based on their budget, available space, and preferences. Recommendations will include explanations and links to supporting sources.
+BrewMatch helps people find a coffee machine that fits their budget and counter space. Next, I want to use product manuals to help people compare models and answer practical questions, such as whether a particular part is dishwasher-safe.
 
-**Status:** Planning the first version. Implementation has not started.
+**Status:** The local FastAPI demo searches a sample catalog of three fictional machines. It returns matching models, a short answer in English, and the name of the catalog it searched.
 
 ## About the project
 
 Choosing a coffee machine often means switching between product pages, specifications, and manuals. I want to bring that information together so users can describe what they need, narrow down their options, and understand the differences.
 
-The project combines structured product filtering, document retrieval, and LLM-generated responses. My main focus is whether recommendations meet the user's requirements and whether the explanations are supported by product documentation.
+I started with a practical question: if a machine’s width is missing, can I recommend it for a 25 cm space? BrewMatch excludes that machine when a width limit is set. You can still look it up by name and see that its width is unknown.
 
-## Initial scope
+## Run the demo locally
 
-The first version will cover around 20 coffee machines. Starting with a small catalog will let me check the source data and evaluate the answers in detail.
+From the repository root on macOS or Linux, run:
 
-Planned features:
+```bash
+python3.11 -m venv .venv
+.venv/bin/python -m pip install fastapi uvicorn
+.venv/bin/python -m uvicorn main:app --reload
+```
 
-- Search by budget, dimensions, and preferences.
-- Compare two products from the catalog.
-- Recommend up to three matching models with explanations.
-- Answer questions about features and cleaning.
-- Include sources and clearly flag missing information.
+Open [the interactive API docs](http://127.0.0.1:8000/docs), expand `POST /search`, and select **Try it out**. Enter this request and select **Execute**:
 
-Prices will come from the catalog, with a recorded collection date. Live price tracking and purchasing are outside the initial scope.
+```json
+{
+  "question": "Which coffee machine fits on my counter?",
+  "max_price_usd": 200,
+  "max_width_cm": 25
+}
+```
 
-## Example questions
+The demo returns:
 
-The application will initially support questions in Polish, such as:
+```json
+{
+  "answer": "BrewMatch Mini costs $129 and is 19 cm wide.",
+  "matches": [
+    { "name": "BrewMatch Mini", "price_usd": 129, "width_cm": 19 }
+  ],
+  "source_id": "machines.json"
+}
+```
 
-- “Szukam ekspresu do 2000 zł o szerokości do 25 cm.”
-- “Piję głównie czarną kawę. Które modele będą łatwe w czyszczeniu?”
-- “Czym różnią się te dwa ekspresy?”
-- “Czy wyjmowane części tego modelu można myć w zmywarce?”
+## Five searches to try
+
+The demo recognizes model names in the question. Use the optional `max_price_usd` and `max_width_cm` fields to set numeric limits.
+
+| Question | Request filters | Expected result |
+| --- | --- | --- |
+| Which coffee machine fits on my counter? | `max_price_usd: 200`, `max_width_cm: 25` | BrewMatch Mini |
+| Which machines fit my budget? | `max_price_usd: 100` | An empty list and a message explaining that no machines match |
+| Can you show me the Home model? | None | BrewMatch Home, $229, 28 cm wide |
+| How wide is the Pro model? | None | BrewMatch Pro, with its width reported as unknown |
+| Will the Pro model fit on my counter? | `max_width_cm: 25` | An empty list because the catalog has no width for Pro |
 
 ## Technical approach
 
-Price and dimension constraints will be checked through filtering in application code. Retrieval will provide relevant passages from product descriptions and manuals.
+FastAPI validates each request before searching the catalog. A negative budget returns a validation error (HTTP 422). A valid budget below the cheapest model returns HTTP 200 with an empty list. In both successful searches and searches with no matches, `source_id` identifies the catalog used.
 
-The LLM will use the selected products and retrieved content to generate an answer with source references. This follows a retrieval-augmented generation (RAG) approach.
-
-This separation will let me evaluate filtering, retrieval, and answer generation independently.
+For the next version, I plan to collect specifications and manuals for around 20 models and record when each price was collected. After filtering the catalog, the application will retrieve relevant passages for the remaining products. An LLM will use those passages to explain differences and cite the supporting documents.
 
 ## Evaluation
 
-I will create a set of questions with expected outcomes and check whether the application:
+I’ve manually checked four cases: a product that fits the requested limits, a search with no matches, a model-name lookup, and a negative budget. As the catalog grows, I’ll turn these examples into regression tests.
 
-- Respects budget and dimension constraints.
-- Supports its explanations with relevant sources.
-- Clearly identifies missing product data.
-- Reports when no products match.
-- Avoids guessing when the documentation does not contain an answer.
-
-For example, a machine with an unknown width should not be presented as a confirmed fit for a 25 cm space. Missing cleaning instructions should not be treated as permission to put parts in a dishwasher.
+For questions about features and cleaning, I’ll also check whether each cited passage supports the answer for that exact model. For example, a manual might say that a drip tray is removable. Before recommending that it go in the dishwasher, the assistant needs a passage confirming that it is dishwasher-safe.
 
 ## Next steps
 
-- [ ] Build the product catalog and collect source documentation.
-- [ ] Implement filtering and retrieval.
-- [ ] Generate answers with source references.
-- [ ] Evaluate results and investigate errors.
-- [ ] Add setup instructions and a demo.
+- Expand the sample catalog and record product sources and price collection dates.
+- Retrieve relevant passages from specifications and manuals.
+- Compare two models and explain up to three recommendations using cited passages.
+- Build an evaluation set and document cases where the system gets an answer wrong.
+- Record a short walkthrough of the working assistant.
+
+Live price tracking and purchasing are outside the initial scope.

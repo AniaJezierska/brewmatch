@@ -42,4 +42,24 @@ def search(request: SearchRequest):
 
         matches.append(machine)
 
-    return {"matches": matches}
+    if matches:
+        lines = []
+        for machine in matches:
+            name = machine["name"]
+            price = machine["price_usd"]
+            width = machine["width_cm"]
+
+            if width is None:
+                lines.append(f"{name} costs ${price}. Its width is unknown.")
+            else:
+                lines.append(f"{name} costs ${price} and is {width} cm wide.")
+
+        answer = "\n".join(lines)
+    else:
+        answer = "No coffee machines in the catalog match your criteria."
+
+    return {
+        "answer": answer,
+        "matches": matches,
+        "source_id": catalog_path.name,
+    }
