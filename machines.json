@@ -1,5 +1,5 @@
 [
-  { "name": "BrewMatch Mini", "price_usd": 129 },
-  { "name": "BrewMatch Home", "price_usd": 229 },
-  { "name": "BrewMatch Pro", "price_usd": 399 }
+  { "name": "BrewMatch Mini", "price_usd": 129, "width_cm": 19 },
+  { "name": "BrewMatch Home", "price_usd": 229, "width_cm": 28 },
+  { "name": "BrewMatch Pro", "price_usd": 399, "width_cm": null }
 ]
